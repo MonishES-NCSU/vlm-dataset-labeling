@@ -5,6 +5,21 @@ import { ImageLabel, LabelStore, createEmptyLabel } from "@/lib/types";
 
 const STORAGE_KEY = "storefront-labels";
 
+// Migration function to add new fields to existing labels
+const migrateLabels = (stored: LabelStore): LabelStore => {
+  const migrated: LabelStore = {};
+  for (const [id, label] of Object.entries(stored)) {
+    migrated[id] = {
+      ...createEmptyLabel(),
+      ...label,
+      // Ensure new fields exist with defaults
+      business_subcategory: label.business_subcategory ?? null,
+      subcategory_other_text: label.subcategory_other_text ?? "",
+    };
+  }
+  return migrated;
+};
+
 export const useLabelStore = () => {
   const [labels, setLabels] = useState<LabelStore>({});
   const [isLoaded, setIsLoaded] = useState(false);
@@ -15,7 +30,8 @@ export const useLabelStore = () => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setLabels(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setLabels(migrateLabels(parsed));
       }
     } catch {
       console.error("Failed to load labels from storage");

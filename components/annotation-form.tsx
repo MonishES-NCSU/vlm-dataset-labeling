@@ -17,7 +17,8 @@ import {
   EvidenceType,
   AnnotatorConfidence,
   MultipleBusiness,
-  validateImageLabel
+  validateImageLabel,
+  SUBCATEGORY_OPTIONS,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -45,14 +46,23 @@ const obstructionOptions: { value: ObstructionType; label: string }[] = [
   { value: "OTHER", label: "Other" },
 ];
 
-const step1bOptions: { value: Step1BRouting; label: string }[] = [
-  { value: "G52_BUILDING_HARDWARE_GARDEN_MOBILEHOME", label: "G52 - Building, Hardware, Garden" },
-  { value: "G53_GENERAL_MERCH_DEPARTMENT", label: "G53 - General Merchandise/Dept" },
-  { value: "G54_FOOD_STORES", label: "G54 - Food Stores" },
-  { value: "G55_AUTO_DEALERS_GAS", label: "G55 - Auto Dealers/Gas" },
-  { value: "G56_APPAREL_SHOES_ACCESSORIES", label: "G56 - Apparel/Shoes/Accessories" },
-  { value: "G57_FURNITURE_FURNISHINGS_ELECTRONICS_MUSIC", label: "G57 - Furniture/Electronics/Music" },
-  { value: "G59_OTHER_SPECIALTY_RETAIL", label: "G59 - Other Specialty Retail" },
+const step1bOptions: { value: Step1BRouting; label: string; description?: string }[] = [
+  { value: "G52_BUILDING_HARDWARE_GARDEN_MOBILEHOME", label: "52 - Building Materials, Hardware, Garden Supply, Mobile Home" },
+  { value: "G53_GENERAL_MERCH_DEPARTMENT", label: "53 - Department Stores and General Merchandise" },
+  { value: "G54_FOOD_STORES", label: "54 - Food Stores", description: "Grocery, convenience, bakery, etc." },
+  { value: "G55_AUTO_DEALERS_GAS", label: "55 - Automotive Dealers", description: "Excludes gas stations" },
+  { value: "G56_APPAREL_SHOES_ACCESSORIES", label: "56 - Apparel & Accessory Stores" },
+  { value: "G57_FURNITURE_FURNISHINGS_ELECTRONICS_MUSIC", label: "57 - Home Furniture, Furnishings, Electronics" },
+  { value: "G58_EATING_DRINKING", label: "58 - Eating & Drinking", description: "Restaurants, bars, cafes" },
+  { value: "G59_OTHER_SPECIALTY_RETAIL", label: "59 - Miscellaneous Retail", description: "Drug stores, liquor, sporting goods, etc." },
+  { value: "G70_LODGING", label: "70 - Hotels, Rooming Houses, Lodging" },
+  { value: "G72_PERSONAL_SERVICES", label: "72 - Personal Services", description: "Laundry, hair salon, barber" },
+  { value: "G75_AUTO_REPAIR_RENTAL_PARKING", label: "75 - Automotive Repair, Car Rental, Car Wash, Parking" },
+  { value: "G76_MISC_REPAIR_SERVICES", label: "76 - Miscellaneous Repair Services", description: "Electronics, furniture repair" },
+  { value: "G78_MOTION_PICTURES", label: "78 - Motion Pictures" },
+  { value: "G79_AMUSEMENT_RECREATION", label: "79 - Amusement and Recreation Services", description: "Gyms, theaters, bowling, etc." },
+  { value: "G84_MUSEUMS_GALLERIES_GARDENS", label: "84 - Museums, Art Galleries, Botanical/Zoo Gardens" },
+  { value: "G86_MEMBERSHIP_ORGANIZATIONS", label: "86 - Membership Organizations", description: "Political, religious, professional" },
   { value: "UNCERTAIN_INSUFFICIENT_EVIDENCE", label: "Uncertain / Insufficient Evidence" },
   { value: "OTHER_OUTSIDE_SCHEMA", label: "Other - Outside Schema" },
 ];
@@ -80,6 +90,11 @@ export function AnnotationForm({ label, onUpdate }: AnnotationFormProps) {
     label.step_1a_visibility === "OBSTRUCTED_VIEW" ||
     (label.step_1a_visibility === "NOT_A_STOREFRONT" && label.gas_station_override === "YES");
   const showOutsideSchemaGuess = label.step_1b_routing === "OTHER_OUTSIDE_SCHEMA";
+  
+  // Show subcategory if the selected category has subcategories defined
+  const subcategoryOptions = label.step_1b_routing ? SUBCATEGORY_OPTIONS[label.step_1b_routing] : null;
+  const showSubcategory = showStep1B && subcategoryOptions && subcategoryOptions.length > 0;
+  const showSubcategoryOtherText = label.business_subcategory?.startsWith("OTHER_");
 
   const handleEvidenceToggle = useCallback((value: EvidenceType) => {
     const current = label.evidence_type;
@@ -254,13 +269,18 @@ export function AnnotationForm({ label, onUpdate }: AnnotationFormProps) {
             <RadioGroup
               value={label.step_1b_routing || ""}
               onValueChange={(value) => {
-                const updates: Partial<ImageLabel> = { step_1b_routing: value as Step1BRouting };
+                const updates: Partial<ImageLabel> = { 
+                  step_1b_routing: value as Step1BRouting,
+                  // Reset subcategory when changing main category
+                  business_subcategory: null,
+                  subcategory_other_text: "",
+                };
                 if (value !== "OTHER_OUTSIDE_SCHEMA") {
                   updates.outside_schema_guess = "";
                 }
                 onUpdate(updates);
               }}
-              className="grid grid-cols-1 gap-2"
+              className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto"
             >
               {step1bOptions.map((option) => (
                 <div
@@ -272,7 +292,11 @@ export function AnnotationForm({ label, onUpdate }: AnnotationFormProps) {
                       : "border-border hover:bg-muted/50"
                   )}
                   onClick={() => {
-                    const updates: Partial<ImageLabel> = { step_1b_routing: option.value };
+                    const updates: Partial<ImageLabel> = { 
+                      step_1b_routing: option.value,
+                      business_subcategory: null,
+                      subcategory_other_text: "",
+                    };
                     if (option.value !== "OTHER_OUTSIDE_SCHEMA") {
                       updates.outside_schema_guess = "";
                     }
@@ -280,10 +304,83 @@ export function AnnotationForm({ label, onUpdate }: AnnotationFormProps) {
                   }}
                 >
                   <RadioGroupItem value={option.value!} id={option.value!} />
-                  <Label htmlFor={option.value!} className="flex-1 cursor-pointer">{option.label}</Label>
+                  <div className="flex-1">
+                    <Label htmlFor={option.value!} className="cursor-pointer">{option.label}</Label>
+                    {option.description && (
+                      <p className="text-xs text-muted-foreground">{option.description}</p>
+                    )}
+                  </div>
                 </div>
               ))}
             </RadioGroup>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Business Subcategory */}
+      {showSubcategory && subcategoryOptions && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs">4b</span>
+              Business Subcategory
+              {!label.business_subcategory && <Badge variant="outline" className="text-amber-600 border-amber-600">Required</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup
+              value={label.business_subcategory || ""}
+              onValueChange={(value) => {
+                const updates: Partial<ImageLabel> = { business_subcategory: value };
+                // Reset other text if not an "Other" option
+                if (!value.startsWith("OTHER_")) {
+                  updates.subcategory_other_text = "";
+                }
+                onUpdate(updates);
+              }}
+              className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto"
+            >
+              {subcategoryOptions.map((option) => (
+                <div
+                  key={option.value}
+                  className={cn(
+                    "flex items-center space-x-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors text-sm",
+                    label.business_subcategory === option.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50"
+                  )}
+                  onClick={() => {
+                    const updates: Partial<ImageLabel> = { business_subcategory: option.value };
+                    if (!option.value.startsWith("OTHER_")) {
+                      updates.subcategory_other_text = "";
+                    }
+                    onUpdate(updates);
+                  }}
+                >
+                  <RadioGroupItem value={option.value} id={`sub-${option.value}`} />
+                  <Label htmlFor={`sub-${option.value}`} className="flex-1 cursor-pointer">{option.label}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Subcategory Other Text */}
+      {showSubcategoryOtherText && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              Specify Other Type
+              {!label.subcategory_other_text.trim() && <Badge variant="outline" className="text-amber-600 border-amber-600">Required</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Input
+              placeholder="Describe the type of business..."
+              value={label.subcategory_other_text}
+              onChange={(e) => onUpdate({ subcategory_other_text: e.target.value })}
+            />
           </CardContent>
         </Card>
       )}
