@@ -12,6 +12,8 @@ export const generateMainCSV = (
     "gas_station_override",
     "obstruction_type",
     "step_1b_routing",
+    "business_subcategory",
+    "subcategory_other_text",
     "evidence_type",
     "notes",
     "annotator_confidence",
@@ -33,6 +35,8 @@ export const generateMainCSV = (
         label.gas_station_override || "",
         label.obstruction_type || "",
         label.step_1b_routing || "",
+        label.business_subcategory || "",
+        escapeCSV(label.subcategory_other_text || ""),
         label.evidence_type.join("|"), // Pipe-separated for multi-select
         escapeCSV(label.notes),
         label.annotator_confidence || "",
