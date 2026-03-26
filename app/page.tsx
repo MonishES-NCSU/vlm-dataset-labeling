@@ -23,7 +23,8 @@ import { AnnotationForm } from "@/components/annotation-form";
 import { ExportDialog } from "@/components/export-dialog";
 import { FolderInput } from "@/components/folder-input";
 import { useLabelStore } from "@/hooks/use-label-store";
-import { validateImageLabel, createEmptyLabel, type AddressData } from "@/lib/types";
+import { validateImageLabel, createEmptyLabel, type AddressData, type BusinessInfoStore } from "@/lib/types";
+import { findBusinessInfo } from "@/lib/address-utils";
 
 export default function LabelingPage() {
   const [folderUrl, setFolderUrl] = useState<string | null>(null);
@@ -33,12 +34,18 @@ export default function LabelingPage() {
   const [currentAddressIndex, setCurrentAddressIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showChangeFolderDialog, setShowChangeFolderDialog] = useState(false);
+  const [businessInfoStore, setBusinessInfoStore] = useState<BusinessInfoStore | null>(null);
   const { labels, isLoaded, lastSaved, getLabel, updateLabel, resetLabel, resetAddressLabels, clearAllLabels } = useLabelStore();
 
   // Derived values (not hooks, so safe after early returns)
   const currentAddress = addresses[currentAddressIndex];
   const currentImage = currentAddress?.images[currentImageIndex];
   const currentLabel = currentImage ? getLabel(currentImage.id) : createEmptyLabel();
+  
+  // Get business info for current address if available
+  const currentBusinessInfo = currentAddress && businessInfoStore 
+    ? findBusinessInfo(currentAddress.name, businessInfoStore) 
+    : null;
 
   // Check if current image is labeled - MUST be before any conditional returns
   const isImageLabeled = useCallback((imageId: string) => {
@@ -125,7 +132,7 @@ export default function LabelingPage() {
   }, [currentAddress, resetAddressLabels]);
 
   // Handle folder URL submission
-  const handleFolderSubmit = useCallback(async (url: string) => {
+  const handleFolderSubmit = useCallback(async (url: string, businessInfo?: BusinessInfoStore) => {
     setIsLoadingFolder(true);
     setFolderError(null);
     
@@ -146,6 +153,11 @@ export default function LabelingPage() {
       setAddresses(data.addresses);
       setCurrentAddressIndex(0);
       setCurrentImageIndex(0);
+      
+      // Store business info if provided
+      if (businessInfo) {
+        setBusinessInfoStore(businessInfo);
+      }
     } catch (err) {
       setFolderError(err instanceof Error ? err.message : "Failed to load images from the folder. Please check the URL and try again.");
     } finally {
@@ -162,6 +174,7 @@ export default function LabelingPage() {
     setCurrentImageIndex(0);
     setFolderError(null);
     setShowChangeFolderDialog(false);
+    setBusinessInfoStore(null);
   }, [clearAllLabels]);
 
   // Keyboard shortcuts - MUST be before any conditional returns
@@ -386,6 +399,7 @@ export default function LabelingPage() {
                   <AnnotationForm
                     label={currentLabel}
                     onUpdate={handleUpdateLabel}
+                    businessInfo={currentBusinessInfo}
                   />
                 </div>
 

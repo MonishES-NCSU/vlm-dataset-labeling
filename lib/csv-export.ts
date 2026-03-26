@@ -15,6 +15,7 @@ export const generateMainCSV = (
     "business_subcategory",
     "subcategory_other_text",
     "evidence_type",
+    "brand_name",
     "notes",
     "annotator_confidence",
     "multiple_businesses_visible",
@@ -38,6 +39,7 @@ export const generateMainCSV = (
         label.business_subcategory || "",
         escapeCSV(label.subcategory_other_text || ""),
         label.evidence_type.join("|"), // Pipe-separated for multi-select
+        escapeCSV(label.brand_name || ""),
         escapeCSV(label.notes),
         label.annotator_confidence || "",
         label.multiple_businesses_visible || "",
