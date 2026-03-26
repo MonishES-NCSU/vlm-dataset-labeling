@@ -15,6 +15,7 @@ const migrateLabels = (stored: LabelStore): LabelStore => {
       // Ensure new fields exist with defaults
       business_subcategory: label.business_subcategory ?? null,
       subcategory_other_text: label.subcategory_other_text ?? "",
+      brand_name: label.brand_name ?? "",
     };
   }
   return migrated;

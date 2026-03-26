@@ -132,6 +132,7 @@ export interface ImageLabel {
   business_subcategory: BusinessSubcategory;
   subcategory_other_text: string;
   evidence_type: EvidenceType[];
+  brand_name: string;
   notes: string;
   annotator_confidence: AnnotatorConfidence;
   multiple_businesses_visible: MultipleBusiness;
@@ -158,6 +159,20 @@ export interface LabelStore {
 
 export type AddressStatus = "not_started" | "in_progress" | "completed";
 
+// Business metadata from uploaded CSV
+export interface BusinessInfo {
+  name?: string;
+  address?: string;
+  type?: string;
+  rating?: string;
+  status?: string;
+  [key: string]: string | undefined; // Allow additional fields
+}
+
+export interface BusinessInfoStore {
+  [normalizedAddress: string]: BusinessInfo;
+}
+
 export interface ValidationResult {
   isValid: boolean;
   missingFields: string[];
@@ -172,6 +187,7 @@ export const createEmptyLabel = (): ImageLabel => ({
   business_subcategory: null,
   subcategory_other_text: "",
   evidence_type: [],
+  brand_name: "",
   notes: "",
   annotator_confidence: null,
   multiple_businesses_visible: null,
@@ -244,6 +260,11 @@ export const validateImageLabel = (label: ImageLabel): ValidationResult => {
   
   if (showStep1B && label.evidence_type.length === 0) {
     missingFields.push("Evidence Type");
+  }
+  
+  // If LOGO_BRAND evidence is selected, brand_name is required
+  if (label.evidence_type.includes("LOGO_BRAND") && !label.brand_name.trim()) {
+    missingFields.push("Brand Name");
   }
   
   // Annotator confidence is always required
